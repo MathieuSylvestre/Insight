@@ -4,6 +4,5 @@ notebooks/.ipynb_checkpoints/nfl_weeks_retriever-checkpoint.ipynb
 notebooks/.ipynb_checkpoints/nfl_weeks_retriever-checkpoint.ipynb
 notebooks/nfl_weeks_retriever.ipynb
 notebooks/weather_scraper_DC.ipynb
-scripts/basic_visualization.py
 scripts/preprocessing_nfl.py
 scripts/preprocessing_rideshare.py
