@@ -10,10 +10,10 @@ from keras.callbacks import EarlyStopping
 
 import model
 
-#Cities considered (more to come)
+#Cities considered
 Cities = ['sapporo','niigata','aomori','kanazawa','hiroshima','sendai', 
           'kyoto', 'tokyo', 'fukuoka', 'shizuoka','matsuyama','osaka','nagoya',
-          'nagasaki','kagoshima','naha']
+          'nagasaki','kagoshima','naha','washington']
 
 #Load city related data and use the city as an index
 df_latitudes = pd.read_csv('../data/raw/city_geo_data.csv')
@@ -29,7 +29,7 @@ for i in range(4):
 
 dfs = []
 
-#Create dictionary for descriptions
+#Create dictionary for precipitation and sun descriptions
 Prec_Descriptions = {
     'Drizzle.': 0.1,
     'Heavy rain.':1,
@@ -67,12 +67,12 @@ Sun_Descriptions = {
 }
 
 #load target dates
-df_target = pd.read_csv('../data/raw/peak_bloom_japan.csv')
+df_target = pd.read_csv('../data/raw/peak_bloom_all.csv')
 
 aggregate_into_days = True
 window_length = None
 
-#To aggregate daily data
+#To aggregate daily data (there are 4 data points of each type (temp, humidity, etc. each day)
 def aggregate_mean(x1,x2,x3,x4):
     return np.mean([x1,x2,x3,x4])
 
@@ -112,13 +112,14 @@ for city in Cities:
     for i in range(4):
         df['Desc' + str(i+1)].fillna('', inplace=True)
         df['Prec' + str(i+1)] = 0
-#        df['Sun'  + str(i+1)] = 0
+#        df['Sun'  + str(i+1)] = 0 #Probably not clear enough
 
         #Add quantitative description
         for description in Prec_Descriptions:     
             val = Prec_Descriptions[description]
             quantify_description(df, description, 'Desc' + str(i+1), 'Prec' + str(i+1), val) 
         
+#        #Sun descriptions removed - probably not clear enough
 #        for description in Sun_Descriptions:    
 #            val = Sun_Descriptions[description]
 #            quantify_description(df, description, 'Desc' + str(i+1), 'Sun'  + str(i+1), val)              
@@ -141,17 +142,17 @@ for city in Cities:
     df['Is_Peak_Bloom']= 0 
     df['Time_To_Peak']= np.nan
 
-    print('Targets of ' + city + ' :')
-    print(targets)
+#    print('Targets of ' + city + ' :')
+#    print(targets)
     
     for target in targets:
         
         #reformat if required (revome 0 if day of month is 08 instead of 8) to enable matching
         if target[8] == '0': 
             target = target[:8] + target[-1]
-            
+           
+        #indicator of peak day
         df.loc[df.Date == target, ['Time_Since_Peak','Is_Peak_Bloom','Time_To_Peak']] = 0, 1, 0
-        #here is where I may add ones around the peak bloom to help balance the dataset
         
     #Set Time_to_Peak for regression and Time_Since_Peak as a feature
     peak_indices = df.index[df.Is_Peak_Bloom == 1].tolist()
@@ -196,151 +197,18 @@ for city in Cities:
                            'Wind1','Wind2','Wind3','Wind4',
                            'Hum1','Hum2','Hum3','Hum4',
                            'Prec1','Prec2','Prec3','Prec4',],inplace=True)
-    
-    if window_length != None:
-        print('making windows')
-#        if history_in_windows:
-#            #TODO: add features to model which accounts for  weather
-#            pass
         
-        #Assemble data as windows that can be shifted for MVP
-        df_windows = df.drop(columns = ['Date','Is_Peak_Bloom','Time_Since_Peak','Time_To_Peak'],inplace=False)
-        for i in range(1,window_length):
-            df_temp = df.shift(-i)
-            df_temp.drop(columns = ['Date','Is_Peak_Bloom','Time_Since_Peak','Time_To_Peak'],inplace=True)
-            df_windows = pd.concat([df_windows,df_temp],axis=1)
-        #include target on last frame
-        df_windows = pd.concat([df_windows,df.shift(-window_length)],axis=1)
-        
-        #only keep windows with target less than 150 days away
-        df_windows = df_windows.dropna() #NaNs were generate as a result of the shifting
-        # Delete these row indexes from dataFrame    
-        i_to_drop = df_windows[df_windows['Time_To_Peak'] > 150 ].index
-        df_windows.drop(i_to_drop , inplace=True)
-        i_to_drop = df_windows[df_windows['Time_To_Peak'] < 0 ].index #Sakura hasn't occured yet
-        df_windows.drop(i_to_drop , inplace=True)     
-        i_to_drop = df_windows[df_windows['Time_Since_Peak'] < 0 ].index #Latest date of Sakura unknown
-        df_windows.drop(i_to_drop , inplace=True)    
-        
-        #append Latitude as a feature
-        df_windows['Latitude'] = df_latitudes.loc[city, 'Latitude']
-        
-        dfs.append(df_windows)
-        
-    else:
-        #TODO: setup for time-series analysis
-        
-        #df.set_index('Date')
-        
-        print(city + ' - not windowing')
-        
-        #add Latitude
-        df['Latitude'] = df_latitudes.loc[city, 'Latitude']
-        #print(df)
-        i_to_drop = df[df['Time_To_Peak'] < 0 ].index #Sakura hasn't occured yet
-        df.drop(i_to_drop , inplace=True)     
-        i_to_drop = df[df['Time_Since_Peak'] < 0 ].index #Latest date of Sakura unknown
-        df.drop(i_to_drop , inplace=True)           
-        
-        #save to CSV as cleaned data
-        df.to_csv(r'../data/cleaned/' + city + '_daily.csv',index=False)
-        
-        dfs.append(df)
-        
-if window_length != None:
+    #add Latitude
+    df['Latitude'] = df_latitudes.loc[city, 'Latitude']
     
-    #For windowed data
-    df_all = pd.concat(dfs)
-    df_all = df_all.sample(frac=1).reset_index(drop=True)
+    #drop time points before or after first and latest sakura
+    i_to_drop = df[df['Time_To_Peak'] < 0 ].index #Sakura hasn't occured yet
+    df.drop(i_to_drop , inplace=True)     
+    i_to_drop = df[df['Time_Since_Peak'] < 0 ].index #Latest date of Sakura unknown
+    df.drop(i_to_drop , inplace=True)           
     
-    y = df_all.Time_To_Peak.values
-    x = df_all.drop(columns = ['Date','Time_To_Peak']).values
+    #save to CSV as cleaned data
+    df.to_csv(r'../data/cleaned/' + city + '_daily.csv',index=False)
     
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
-    
-    #Normalize
-    min_max_scaler = preprocessing.MinMaxScaler()
-    x_train_normalized = min_max_scaler.fit_transform(x_train)
-    x_test_normalized = min_max_scaler.transform(x_test)
-    
-elif False:
-    
-#    dfs_ts = []
-#    x_ts = []
-#    y_ts = []
-    
-    max_len = 0
-    for df in dfs:
-        max_len = max(max_len, len(df))
-    
-    #Do zero padding to enable training with various length time series
-    
-    xs_list = []
-    ys_list = []
-    
-    special_value = -1000
-    
-    for df in dfs:
-        #make block of 0s of dimensions max_len - len(df) by #dimensions
-        
-        xs1 = df.drop(columns = ['Date','Time_To_Peak']).values
-        ys1 = df.Time_To_Peak.values        
-        
-        #block of zeros to add
-        zero_pad = True
-        if zero_pad:
-            if max_len > len(df):
-                zs1 = special_value*np.ones((max_len-len(df),xs1.shape[1]))
-                xs1 = np.concatenate((zs1,xs1)) #zero-pad before or after?
-                ys1 = np.concatenate((np.zeros(max_len-len(df)),ys1))
-        
-        xs_list.append(xs1)
-        ys_list.append(ys1)
-
-    xs = np.asarray(xs_list)  
-    ys = np.asarray(ys_list)  
-    
-    #reshape output
-    ys = ys.reshape(ys.shape[0],ys.shape[1],1)   
-
-     
-    
-#    model = Sequential()
-#    #Runs, doesn't contain much though
-#    model.add(LSTM(units = 1, input_shape=(None,xs.shape[-1]),return_sequences=True)) 
-#    model.compile(loss='mae', optimizer='adam', metrics=['mean_absolute_error'])
-#    model.fit(xs, ys, epochs = 1, batch_size = 4)    
-#
-#    #Runs!!! add more complexity to the network
-#    model = Sequential()
-#    model.add(LSTM(units = 64, input_shape=(None,xs.shape[-1]),return_sequences=True))     
-#    for i in range(3):
-#        model.add(Dense(32, activation='relu'))
-#    #model.add(Dropout(0))
-#    #Problem, activation needs to be relu for regression here, but could lead to nans
-#    model.add(LSTM(units = 1, input_shape = (32,), activation = None, return_sequences=True))     
-#    model.compile(loss='mae', optimizer='adam', metrics=['mean_absolute_error'])
-#    model.fit(xs, ys, epochs = 1, batch_size = 4)
- 
-    #Runs, no nans, difference is a simpler model with no Dense layers and less LSTM units
-    model = Sequential()
-#    model.add(Masking(mask_value=special_value, input_shape=(max_len, xs.shape[-1])))
-    model.add(LSTM(units = 12, input_shape=(None,xs.shape[-1]),activation = 'relu', return_sequences=True))     
-    model.add(LSTM(units = 1, input_shape = (12,), activation = 'relu', return_sequences=True))     
-    model.compile(loss='mae', optimizer='adam', metrics=['mean_absolute_error'])
-    model.fit(xs, ys, epochs = 1, batch_size = 2)
-    
-    
-end_time = time.time()
-
-print('time = ' + str(end_time - start_time) + ' s')
-
-if False:
-    regr = model.WindowedRegressionModel(regr = 'Random Forest Regressor')
-    regr.train(x_train,y_train)
-    
-    y_pred = regr.predict(x_test)
-    print('MAE : ' + str(regr.get_mae(y_test,y_pred)))
-    print('R^2 : ' + str(regr.get_r2(y = y_test,y_pred = y_pred)))
-
+    dfs.append(df)
 
