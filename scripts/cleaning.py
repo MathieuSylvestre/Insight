@@ -1,14 +1,7 @@
 import pandas as pd
 import numpy as np
 import time
-from sklearn.model_selection import train_test_split
-from sklearn import preprocessing
-
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, LSTM, Masking
-from keras.callbacks import EarlyStopping
-
-import model
+from datetime import datetime
 
 #Cities considered
 Cities = ['sapporo','niigata','aomori','kanazawa','hiroshima','sendai', 
@@ -82,8 +75,18 @@ def aggregate_min(x1,x2,x3,x4):
 def aggregate_sum(x1,x2,x3,x4):
     return np.sum([x1,x2,x3,x4])
 
+#Returns the number of days since August 1 from a string in the form 'YYYY-MM-DD'
+#For days 
+def date_to_nth_day(date, str_format='%Y-%m-%d'):
+    date = datetime.strptime(date, str_format)
+    new_year_day = datetime(year=date.year, month=1, day=1)
+    nb_days = (date - new_year_day).days + 1
+    if nb_days > 212:        
+        return nb_days + - 211 #153 is offset for August 1
+    return (date - new_year_day).days + 365 - 211#return actual day of year otherwise
+
 #Take in description and column containing description, return updated value for column 'col'. col should be a string
-#Modifies the column col of dataframe at the 
+#Modifies the column col of dataframe at the TODO
 def quantify_description(df, str_desc, col_desc, col, val_true):
     #if description contains string in each of the following,
     
@@ -201,6 +204,9 @@ for city in Cities:
     #add Latitude
     df['Latitude'] = df_latitudes.loc[city, 'Latitude']
     
+    #add day of year
+    df['Day_Of_Year'] = df.apply(lambda x: date_to_nth_day(x.Date), axis=1) 
+    
     #drop time points before or after first and latest sakura
     i_to_drop = df[df['Time_To_Peak'] < 0 ].index #Sakura hasn't occured yet
     df.drop(i_to_drop , inplace=True)     
@@ -209,6 +215,6 @@ for city in Cities:
     
     #save to CSV as cleaned data
     df.to_csv(r'../data/cleaned/' + city + '_daily.csv',index=False)
-    
+
     dfs.append(df)
 
