@@ -4,11 +4,12 @@ import sakura_utils as sutils
 import matplotlib
 from matplotlib import pyplot as plt
 
-#Cities considered (more to come)
+plot_result = False #Define whether a sample output plot should be produced
+
+#Cities considered
 Cities = ['sapporo','niigata','aomori','kanazawa','hiroshima','sendai', 
           'kyoto', 'tokyo', 'fukuoka', 'shizuoka','matsuyama','osaka','nagoya',
-          'nagasaki','kagoshima',#'naha',
-          'washington']
+          'nagasaki','kagoshima','naha','washington']
 
 #Do k-fold cross validation for model selection
 nb_cities = len(Cities)
@@ -22,6 +23,7 @@ dfs_w = sutils.get_lists_of_windows(window_length,
                                     Cities,
                                     path = '../data/cleaned/',
                                     col_to_drop = ['Temp_Low'])#['Hum','Prec','Baro','Temp_Low'])
+
 
 #get training and test data
 train_df, test_df  = sutils.get_train_test_split_by_date_and_city(dfs_w,test_size=0.2)
@@ -56,7 +58,7 @@ y_pred = cph.predict_median(n_test).values.T[0]
 mae_test = sutils.plot_mae_vs_y_true(y_pred,y_test,100)
 
 #Plot results for presentation slides
-if True:
+if plot_result:
     
     #Define times at which to plot CDF
     times = np.arange(140).tolist()

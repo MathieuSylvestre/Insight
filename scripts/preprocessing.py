@@ -94,7 +94,7 @@ days_before_offset = 30 #must be at least 1
 dividers = np.max((days_before_offset*np.ones(len(y_train)),
                    y_train),axis=0)-(days_before_offset-1)*np.ones(len(y_train))
 sample_weight = 100*np.ones(len(y_train))/days_before_offset
-#sample_weight = np.ones(len(y_train))
+#sample_weight = np.ones(len(y_train)) #As a point of comparison
 
 #Train model with all training data
 print('With XGBRegressor')
@@ -104,8 +104,8 @@ xgbr = xgboost.XGBRegressor(max_depth=7,
 xgbr.fit(xn_train,y_train,sample_weight)
 
 #Save model for future retrieval
-#filename = 'model_short' + str(int(time.time())) + '.sav'
-#pickle.dump(xgbr, open(filename, 'wb'))
+filename = 'model' + '.sav'
+pickle.dump(xgbr, open(filename, 'wb'))
 
 #make predicitions
 print('Test set predictions')
@@ -125,31 +125,14 @@ else:
 #Plot true vs predicted for some year
 sutils.plot_predictions_versus_true(y_test,y_pred,100,1)
 
-print('Train set predictions')
+#show training set predictions
+print('Training set predictions')
 y_pred_train = xgbr.predict(xn_train)
 print('MAE : ' + str(median_absolute_error(y_train,y_pred_train)))
 
 #Plot median and average errors for both the training and test set
-sutils.plot_median_error_vs_y_true(y_pred,y_test,150,'med_test')
+sutils.plot_median_error_vs_y_true(y_pred,y_test,150)
 mae_test = sutils.plot_mae_vs_y_true(y_pred,y_test,150)
 sutils.plot_median_error_vs_y_true(y_pred_train,y_train,150)
 sutils.plot_mae_vs_y_true(y_pred_train,y_train,150)
-
-
-#TODO: get two models working. Once this is done, this code will be moved elsewhere
-if False:
-    xn_train_long, y_train_long, xn_test_long, y_test_long = sutils.prepare_data_for_training(train_df_long,test_df_long)
-    xn_train_short, y_train_short, xn_test_short, y_test_short = sutils.prepare_data_for_training(train_df_short,test_df_short)
-    
-    loaded_model_short = pickle.load(open('model_short.sav', 'rb'))
-    loaded_model_long = pickle.load(open('model_long.sav', 'rb'))
-    
-    y_pred_long = loaded_model_long.predict(xn_test_long)
-    y_pred_short = loaded_model_short.predict(xn_test_short)
-    
-    #output from most appropriate model
-    y_pred = y_pred_long
-    for i in range(len(y_pred)):
-        if y_pred_long > 25:
-            y_pred = y_pred_short
     
