@@ -5,6 +5,7 @@ from sklearn.model_selection import KFold
 from sklearn.metrics import median_absolute_error
 import matplotlib.pyplot as plt
 import statistics
+import xgboost
 
 def get_all_windows(df, window_length, max_distance_to_peak, min_distance_to_peak = 0, col_to_drop=[]):
     """
@@ -114,7 +115,8 @@ def cross_validate_by_city(df,mdl,target_col,col_to_drop = [],k=3):
     mdl: model for which cross-validation is performed. Assumed to have 'fit' 
         and 'predict', as in sklearn or xgboost
     target_col: name of column containing targets
-    col_to_drop: names of columns to drop from df. Default is col_to_drop=[]
+    col_to_drop: list of names of columns to drop from df. 
+        Default is col_to_drop=[]
     k: number of folds to use in cross validation. Default is k=3
     
     Returns
@@ -225,14 +227,26 @@ def get_train_test_split_by_date_and_city(dfs,test_size=0.2):
             test_dfs.append(df_years[i])
     return train_dfs, test_dfs
 
-#get all windows from all cities listed in Cities
-#returned windows are of length window_length
-#path is the folder in which the cleaned data is contained
+
 def get_lists_of_windows(window_length, max_distance_to_peak, Cities, path, col_to_drop=[]):
     """
-    Get all windows from all cities listed in Cities. Returned windows are of 
-    length window_length. Path is the folder in which the cleaned data is contained
-    """
+    Get all windows from all cities listed in Cities.
+    
+    Parameters
+    ----------
+    window_length: length of windows to be extracted from the data
+    max_distance_to_peak: determines windows to keep - windows that have a 
+        target of more than max_distance_to_peak are not returned
+    Cities: list of names of cities for which the data should be extracted
+    path: relative address of folder where the files are stored
+    col_to_drop: names of the columns that are to be dropped. They are assumed 
+        refer to exist. Default is col_to_drop=[]
+    
+    Returns
+    -------
+    dfs: list of dataframes, where each dataframe contains the windows of each 
+        city in Cities
+    """    
     
     dfs = []
     for city in Cities:
@@ -365,54 +379,42 @@ def plot_median_error_vs_y_true(y_pred,y_true,points_to_plot = None, name = None
         plt.savefig(name, format='eps', dpi=1000)
     return med_error
     
-def Cross_Validate(window_length):
+def Cross_Validate(df, window_length, max_distance_to_peak):
     #Do k-fold cross validation and show metrics - comment out when not doing hyperparameter tuning
     max_depths = []
     avg_maes = []
-    hyperparams = []
-    
-    for dist_index in range(1):
-    #    if dist_index == 0:
-    #        max_distance_to_peak = 40
-    #   else:
-    #        max_distance_to_peak = 100
-    #        
-    #    for window_length_index in range(2,5):
-    #        window_length = 25 * window_length_index
-    #    #    window_length = 100
-    #    #    max_distance_to_peak = 40
-    #        dfs_w = sutils.get_lists_of_windows(window_length, 
-    #                                            max_distance_to_peak, 
-    #                                            Cities, 
-    #                                            path = '../data/cleaned/')
-        for depth in range(5,9):
+    hyperparams = []    
+
+    for depth in range(5,9):
+        
+        for n_estimators_index in range(2,6):
             
-            for n_estimators_index in range(2,6):
-                
-                n_estimators = 50 * n_estimators_index
-                str_hyperparams = 'dist_to_peak: ' + str(max_distance_to_peak) + '\nwindow_length: ' + str(window_length) + '\nmax_depth: ' + str(depth) + '\nn_estimators: ' + str(n_estimators)
-                print(str_hyperparams)
-                
-                #Define model
-                xgbr = xgboost.XGBRegressor(max_depth=depth,
-                                            n_estimators = n_estimators,
-                                            objective = 'reg:squarederror')
-                
-                #Return metrics related to cross validation by city
-                maes, r2s = sutils.cross_validate_by_city(df = train_df,
-                                                          mdl = xgbr,
-                                                          target_col='Time_To_Peak',
-                                                          col_to_drop=['Date'])
-                
-                print('\nMAEs and R^2: max_depth = ' + str(depth))
-                print('Average MAE: ' + str(np.mean(maes)) + 'all: ' + str(maes))
-                
-                max_depths.append(depth)
-                avg_maes.append(np.mean(maes))
-                hyperparams.append(str_hyperparams)
+            n_estimators = 50 * n_estimators_index
+            str_hyperparams = 'dist_to_peak: ' + str(max_distance_to_peak) + '\nwindow_length: ' + str(window_length) + '\nmax_depth: ' + str(depth) + '\nn_estimators: ' + str(n_estimators)
+            print(str_hyperparams)
+            
+            #Define model
+            xgbr = xgboost.XGBRegressor(max_depth=depth,
+                                        n_estimators = n_estimators,
+                                        objective = 'reg:squarederror')
+            
+            #Return metrics related to cross validation by city
+            maes, r2s = cross_validate_by_city(df = df,
+                                               mdl = xgbr,
+                                               target_col='Time_To_Peak',
+                                               col_to_drop=['Date'])
+            
+            print('\nMAEs and R^2: max_depth = ' + str(depth))
+            print('Average MAE: ' + str(np.mean(maes)) + 'all: ' + str(maes))
+            
+            max_depths.append(depth)
+            avg_maes.append(np.mean(maes))
+            hyperparams.append(str_hyperparams)
     
     #Plot evolution of test set error as a function of the model complexity
     plt.plot(max_depths,avg_maes)
     plt.xlabel('Model complexity')
     plt.ylabel(r'Test fold MAE')
     plt.show()
+    
+    return avg_maes, hyperparams
