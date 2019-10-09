@@ -1,6 +1,6 @@
 # Bloom Cast
 
-Project to predict when the sakura will occur in different cities around the world. Specifically, at any given date, for a given city an estimate for the number of days before the peak bloom of the sakura is provided. Having a good prediction enables sakura festival organizers to better organize and plan their festivals, which could result in increased number of visitors and revenue. For a brief presentation on the work performed, see ([this presentation](https://tinyurl.com/y37emx5z)).
+Project to predict when the sakura will occur in different cities around the world. Specifically, at any given date, for a given city an estimate for the number of days before the peak bloom of the sakura is provided. Having a good prediction enables sakura festival organizers to better organize and plan their festivals, which could result in increased number of visitors and revenue. For a brief presentation on the work performed, see [this presentation](https://tinyurl.com/y37emx5z).
 
 ### Contents
 * [Installation](#installation)
@@ -36,7 +36,7 @@ pip install -r requirements.txt
 
 ## Download Data
 
-To download the weather data, run 'notebook/weather_scraper.ipynb'. For predictions, download only the cities of interest, for the latest year. Different cities can also be included as long as historic weather for the past 150 days are available on ([timeanddate](https://www.timeanddate.com/weather/)). Historical peak bloom dates and geographic information used for training can be found in the 'tables' folder. New locations and the corresponding geographical information should be added to these files for predictions at new locations. The peak bloom dates do not need to be true, unless a new model is to be trained with these values. After making these adjustments, run 'scripts/cleaning.py'. This will produce a cleaned dataset, saved as a '.csv' file.
+To download the weather data, run 'notebook/weather_scraper.ipynb'. For predictions, download only the cities of interest, for the latest year. Different cities can also be included as long as historic weather for the past 150 days are available on [this site](https://www.timeanddate.com/weather/). Historical peak bloom dates and geographic information used for training can be found in the 'tables' folder. New locations and the corresponding geographical information should be added to these files for predictions at new locations. The peak bloom dates do not need to be true, unless a new model is to be trained with these values. After making these adjustments, run 'scripts/cleaning.py'. This will produce a cleaned dataset, saved as a '.csv' file.
 
 ## Survival Analysis
 
