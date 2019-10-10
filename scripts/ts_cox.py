@@ -28,25 +28,19 @@ dfs_w = sutils.get_lists_of_windows(window_length,
 #get training and test data
 train_df, test_df  = sutils.get_train_test_split_by_date_and_city(dfs_w,test_size=0.2)
 
-#get data for model training
-weights = None
-
-days_before_offset = 30 #must be at least 1
-dividers = np.max((days_before_offset*np.ones(len(y_train)),
-                   y_train),axis=0)-(days_before_offset-1)*np.ones(len(y_train))
-weights = 100*np.ones(len(y_train))/days_before_offset
-
+#get data as a pandas dataframe for coxPHFitter
+weight_delays = 30
 n_train, n_test = sutils.prepare_data_for_training(train_df,
                                                    test_df,
                                                    drop_Time_Since_Peak = True, 
                                                    drop_Day_Of_Year = False, 
                                                    drop_Latitude = False,
                                                    return_numpy=False,
-                                                   weights = weights)
+                                                   weight_delays = weight_delays)
 
 #Create and train Cox Proportional Hazards model
 cph = CoxPHFitter()
-if weights != None:
+if weight_delays != None:
     cph.fit(n_train, duration_col='Target', weights_col = 'Weights', show_progress=True)
 else:
     cph.fit(n_train, duration_col='Target', show_progress=True)
@@ -55,6 +49,7 @@ cph.print_summary()
 #Quantify predictions
 y_test = n_test.Target.values
 y_pred = cph.predict_median(n_test).values.T[0]
+#get mean average error for last 100 days
 mae_test = sutils.plot_mae_vs_y_true(y_pred,y_test,100)
 
 #Plot results for presentation slides

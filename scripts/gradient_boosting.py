@@ -90,10 +90,11 @@ xn_train, y_train, xn_test, y_test = sutils.prepare_data_for_training(train_df,
 #Weigh samples. Smaller weights are assigned to samples far from the actual
 #bloom since we assume that required information to make a better prediction 
 #isn't yet available (i.e. the weather of the future is necessary)
+
 days_before_offset = 30 #must be at least 1
 dividers = np.max((days_before_offset*np.ones(len(y_train)),
                    y_train),axis=0)-(days_before_offset-1)*np.ones(len(y_train))
-sample_weight = 100*np.ones(len(y_train))/days_before_offset
+sample_weight = 100*np.ones(len(y_train))/dividers
 #sample_weight = np.ones(len(y_train)) #As a point of comparison
 
 #Train model with all training data

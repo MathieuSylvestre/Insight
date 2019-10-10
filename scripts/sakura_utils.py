@@ -70,12 +70,12 @@ def get_all_windows(df, window_length, max_distance_to_peak, min_distance_to_pea
     df_windows.drop(i_to_drop , inplace=True)
     return df_windows
 
-#get a subset of a dataframe of windows based on the target value.
-#samples with target values are dropped.
-def drop_old_windows(df_windows,max_distance_to_peak):
-    i_to_drop = df_windows[df_windows['Time_To_Peak'] > max_distance_to_peak].index
-    df_windows.drop(i_to_drop , inplace=True)
-    return df_windows
+##get a subset of a dataframe of windows based on the target value.
+##samples with target values are dropped.
+#def drop_old_windows(df_windows,max_distance_to_peak):
+#    i_to_drop = df_windows[df_windows['Time_To_Peak'] > max_distance_to_peak].index
+#    df_windows.drop(i_to_drop , inplace=True)
+#    return df_windows
     
 def normalize(x_train,x_test):
     """
@@ -97,12 +97,7 @@ def normalize(x_train,x_test):
     xn_train = min_max_scaler.fit_transform(x_train)
     xn_test = min_max_scaler.transform(x_test)
     return xn_train, xn_test
-    
-#cross validate, separating train and test set by city. 
-#df is a list of dataframes where each dataframe is associated to a city.
-#mdl is the model to use
-#col_to_drop is a list of columns to drop from the dataframe when creating the input set.
-#k is the number of folds for cross validation
+
 def cross_validate_by_city(df,mdl,target_col,col_to_drop = [],k=3):
     """
     Cross validation with separation of the cross-validation folds by city.
@@ -257,9 +252,16 @@ def get_lists_of_windows(window_length, max_distance_to_peak, Cities, path, col_
         dfs.append(get_all_windows(df, window_length, max_distance_to_peak, 0, col_to_drop))
     return dfs
 
+def get_sample_weights(days_before_offset,x,scale_factor=100):
+    days_before_offset = max(1, days_before_offset) 
+    if x < days_before_offset:
+        return scale_factor
+    else:
+        return scale_factor * days_before_offset/x
+
 #main preprocessing tool once training and test set have defined
 #   Assumed that train_df and test_df are lists of dataframes
-def prepare_data_for_training(train_df, test_df, drop_Time_Since_Peak = False, drop_Day_Of_Year = True, drop_Latitude = False, return_numpy = True, weights = None):
+def prepare_data_for_training(train_df, test_df, drop_Time_Since_Peak = False, drop_Day_Of_Year = True, drop_Latitude = False, return_numpy = True, weight_delays = None):
     #Concatenate training and test samples
     train_all_df = pd.concat(train_df)
     test_all_df = pd.concat(test_df)
@@ -294,14 +296,28 @@ def prepare_data_for_training(train_df, test_df, drop_Time_Since_Peak = False, d
         n_test_df = pd.DataFrame(xn_test)
         n_train_df['Target'] = y_train.tolist()
         n_test_df['Target'] = y_test.tolist()   
-        if weights != None:
-            n_train_df['Weights'] = n_train_df.apply(lambda x: 1/(1+0.01*x.Target), axis=1)
-            n_test_df['Weights'] = n_test_df.apply(lambda x: 1/(1+0.01*x.Target), axis=1)
+        if weight_delays != None:
+            #days_before_offset = 30 #must be at least 1
+            #dividers = np.max((days_before_offset*np.ones(len(y_train)),
+            #                   y_train),axis=0)-(days_before_offset-1)*np.ones(len(y_train))
+            #weights = 100*np.ones(len(y_train))/days_before_offset
+            n_train_df['Weights'] = n_train_df.apply(lambda x: get_sample_weights(weight_delays,x.Target), axis=1)
+            n_test_df['Weights'] = n_test_df.apply(lambda x: get_sample_weights(weight_delays,x.Target), axis=1)
+            
+#            n_train_df['Weights'] = n_train_df.apply(lambda x: 1/(1+0.01*x.Target), axis=1)
+#            n_test_df['Weights'] = n_test_df.apply(lambda x: 1/(1+0.01*x.Target), axis=1)
     return n_train_df, n_test_df
 
-#Plots days til bloom. y_true should be a decreasing sequence, y_pred
-#associated predictions
 def plot_predictions_over_time(y_true,y_pred):
+    """
+    Plot predictions as a function of the true value
+    
+    Parameters
+    ----------
+    y_pred: predicted values, array
+    y_true: actual values, must be array of same length as y_pred
+    
+    """
     y_true = np.flip(y_true)
     plt.scatter(y_true,y_pred)
     plt.xlabel('time (days)')
@@ -327,10 +343,25 @@ def plot_predictions_versus_true(y_true,y_pred, days_plotted = 60, years_back = 
     plt.xlabel('True number of days to peak bloom')
     plt.ylabel('Predicted number of days to bloom')
     plt.show()
-    
-#returns the mean average error between y_pred and y_true as a vector, where
-#index refers to the number of days til peak bloom
+
 def plot_mae_vs_y_true(y_pred,y_true,points_to_plot = None):
+    """
+    Computes the mean absolute difference between y_pred and y_true as a vector, 
+    where the index of med_error refers to the number of days til peak bloom
+    if name isn't null, the plot is saved as an eps file
+    
+    Parameters
+    ----------
+    y_pred: predicted values, array
+    y_true: actual values, must be array of same length as y_pred
+    points_to_plot: number of days (points) to plot. default is max value in y_true
+    name: name of file (if saved). Defaut None (not saved)
+    
+    Returns
+    -------
+    avg_error: array of median error indexed by the number of days to peak bloom
+    
+    """
     error = np.abs(y_pred-y_true)
     error_sum = np.zeros(int(np.max(y_true)+1))
     counts = np.ones(int(np.max(y_true)+1))
@@ -350,10 +381,24 @@ def plot_mae_vs_y_true(y_pred,y_true,points_to_plot = None):
     
     return avg_error
 
-#returns the median absolute difference between y_pred and y_true as a vector, 
-#where the index of med_error refers to the number of days til peak bloom
-#if name isn't null, the plot is saved as an eps file 
 def plot_median_error_vs_y_true(y_pred,y_true,points_to_plot = None, name = None):
+    """
+    Computes the median absolute difference between y_pred and y_true as a vector, 
+    where the index of med_error refers to the number of days til peak bloom
+    if name isn't null, the plot is saved as an eps file
+    
+    Parameters
+    ----------
+    y_pred: predicted values, array
+    y_true: actual values, must be array of same length as y_pred
+    points_to_plot: number of days (points) to plot. default is max value in y_true
+    name: name of file (if saved). Defaut None (not saved)
+    
+    Returns
+    -------
+    med_error: array of median error indexed by the number of days to peak bloom
+    
+    """
     error = np.abs(y_pred-y_true)
     error_lists = [ [] for i in range(int(np.max(y_true)+1)) ]
     for i in range(len(y_true)):
