@@ -132,7 +132,7 @@ y_pred_train = xgbr.predict(xn_train)
 print('MAE : ' + str(median_absolute_error(y_train,y_pred_train)))
 
 #Plot median and average errors for both the training and test set
-sutils.plot_median_error_vs_y_true(y_pred,y_test,150)
+sutils.plot_median_error_vs_y_true(y_pred,y_test,100)
 mae_test = sutils.plot_mae_vs_y_true(y_pred,y_test,150)
 sutils.plot_median_error_vs_y_true(y_pred_train,y_train,150)
 sutils.plot_mae_vs_y_true(y_pred_train,y_train,150)

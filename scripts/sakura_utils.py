@@ -69,13 +69,6 @@ def get_all_windows(df, window_length, max_distance_to_peak, min_distance_to_pea
     i_to_drop = df_windows[df_windows['Time_Since_Peak'] < 0 ].index #Latest date of Sakura unknown
     df_windows.drop(i_to_drop , inplace=True)
     return df_windows
-
-##get a subset of a dataframe of windows based on the target value.
-##samples with target values are dropped.
-#def drop_old_windows(df_windows,max_distance_to_peak):
-#    i_to_drop = df_windows[df_windows['Time_To_Peak'] > max_distance_to_peak].index
-#    df_windows.drop(i_to_drop , inplace=True)
-#    return df_windows
     
 def normalize(x_train,x_test):
     """
@@ -253,6 +246,21 @@ def get_lists_of_windows(window_length, max_distance_to_peak, Cities, path, col_
     return dfs
 
 def get_sample_weights(days_before_offset,x,scale_factor=100):
+    """
+    Get the sample weight for a sample, based on actual time to peak bloom and
+    an inputed offset. For days after offset, downweight by factor 1/target
+    
+    Parameters
+    ----------
+    days_before_offset: time before peak bloom for which no downweighting is 
+        applied
+    x: true value (target, days to peak bloom)
+    scale_factor: scaling factor on weights, default 100
+    
+    Returns
+    -------
+    weight sample for the given sample 
+    """       
     days_before_offset = max(1, days_before_offset) 
     if x < days_before_offset:
         return scale_factor
@@ -262,6 +270,38 @@ def get_sample_weights(days_before_offset,x,scale_factor=100):
 #main preprocessing tool once training and test set have defined
 #   Assumed that train_df and test_df are lists of dataframes
 def prepare_data_for_training(train_df, test_df, drop_Time_Since_Peak = False, drop_Day_Of_Year = True, drop_Latitude = False, return_numpy = True, weight_delays = None):
+    """
+    From training and test sets stored as lists of dataframes, performs normalization
+    and returns training and test sets ready for training
+    
+    Parameters
+    ----------
+    train_df: list of dataframes containing windows to be used for training
+    test_df: list of dataframes containing windows to be used for testing
+    drop_Time_Since_Peak: boolean, whether the column Time_Since_Peak should be 
+        dropped from the feature set
+    drop_Day_Of_Year: boolean, whether the column Day_Of_Year should be 
+        dropped from the feature set    
+    drop_Latitude: boolean, whether the column Latitude should be 
+        dropped from the feature set   
+    return_numpy: boolean, whether function should return x_train/test and 
+        y_train/test as numpy arrays or pandas dataframes
+    weight_delays: if using delays, set how much delay (time from peak) until
+        downweighting samples. Default is None - leaves all samples equally 
+        weighted
+    
+    Returns
+    -------
+    if return_numpy == True
+        xn_train: numpy array, training set, normalized
+        y_train: numpy array, training set targets
+        xn_test: numpy array, test set, normalized
+        y_test: numpy array, test set targets
+    else
+        n_train: dataframe containing all training samples - with features and samples
+        n_test: dataframe containing all testing samples - with features and samples
+    """    
+    
     #Concatenate training and test samples
     train_all_df = pd.concat(train_df)
     test_all_df = pd.concat(test_df)
@@ -296,21 +336,15 @@ def prepare_data_for_training(train_df, test_df, drop_Time_Since_Peak = False, d
         n_test_df = pd.DataFrame(xn_test)
         n_train_df['Target'] = y_train.tolist()
         n_test_df['Target'] = y_test.tolist()   
+        #add weights
         if weight_delays != None:
-            #days_before_offset = 30 #must be at least 1
-            #dividers = np.max((days_before_offset*np.ones(len(y_train)),
-            #                   y_train),axis=0)-(days_before_offset-1)*np.ones(len(y_train))
-            #weights = 100*np.ones(len(y_train))/days_before_offset
             n_train_df['Weights'] = n_train_df.apply(lambda x: get_sample_weights(weight_delays,x.Target), axis=1)
-            n_test_df['Weights'] = n_test_df.apply(lambda x: get_sample_weights(weight_delays,x.Target), axis=1)
-            
-#            n_train_df['Weights'] = n_train_df.apply(lambda x: 1/(1+0.01*x.Target), axis=1)
-#            n_test_df['Weights'] = n_test_df.apply(lambda x: 1/(1+0.01*x.Target), axis=1)
+            n_test_df['Weights'] = n_test_df.apply(lambda x: get_sample_weights(weight_delays,x.Target), axis=1)            
     return n_train_df, n_test_df
 
 def plot_predictions_over_time(y_true,y_pred):
     """
-    Plot predictions as a function of the true value
+    Plots predictions as a function of the true value
     
     Parameters
     ----------
@@ -324,8 +358,22 @@ def plot_predictions_over_time(y_true,y_pred):
     plt.ylabel('Predicted days to bloom')
     plt.show()
     
-#Might be removed
+    
 def plot_predictions_versus_true(y_true,y_pred, days_plotted = 60, years_back = 0):
+    """
+    Plot predictions as a function of the true value for a set number of 
+    consecutive days ending at 0 days to peak bloom.
+    
+    Parameters
+    ----------
+    y_pred: predicted values, array
+    y_true: actual values, must be array of same length as y_pred. Assumed to be
+        in order, i.e. for a given city/year, dates are all together in an 
+        ascending order
+    days_plotted: number of days plotted
+    years_back: number of city/years to go back and plot
+    
+    """
     year_counter = 0
     last_day = 0
     first_day = 1
@@ -347,8 +395,9 @@ def plot_predictions_versus_true(y_true,y_pred, days_plotted = 60, years_back = 
 def plot_mae_vs_y_true(y_pred,y_true,points_to_plot = None):
     """
     Computes the mean absolute difference between y_pred and y_true as a vector, 
-    where the index of med_error refers to the number of days til peak bloom
-    if name isn't null, the plot is saved as an eps file
+    where the index of med_error refers to the number of days til peak bloom.
+    Also produces a plot, and if name isn't null, the plot is saved as an eps 
+    file.
     
     Parameters
     ----------
@@ -417,7 +466,7 @@ def plot_median_error_vs_y_true(y_pred,y_true,points_to_plot = None, name = None
     else:
         plt.plot(med_error[:points_to_plot])
     plt.xlabel('Days til peak bloom')
-    plt.ylabel('Median Error (Days)')
+    plt.ylabel('Median Absolute Error (Days)')
     plt.gca().invert_xaxis()
     plt.gca().set_ylim(bottom=-0.1)
     if name != None:

@@ -12,7 +12,7 @@ Project performed as part of the Insight Artificial Intelligence in Toronto wher
 
 ##  Installation
 
-If you have `conda` installed, then create a new virtual environment (using python 3.6+, compatibility issue were not tested for in lower versions) and activate the virtual environment:  
+If you have `conda` installed, then create a new virtual environment (using python 3.6+, compatibility issues were not tested for in lower versions) and activate the virtual environment:  
 ```
 conda create -n bloomcast python=3.6
 conda activate bloomcast
@@ -44,7 +44,9 @@ The file `script/ts_cox.py` contains the workflow used to obtain the cox proport
 
 ## XGBoost
 
-Following cross-validation, a gradient-boosted tree was trained using the optimal hyperparameters and the final model is saved as `scripts/model.sav`. The file `scripts/gradient_boosting.py` contains the workflow used for training the xgboost model.
+Following cross-validation, a gradient-boosted tree was trained using the optimal hyperparameters and the final model is saved as `scripts/model.sav`. The file `scripts/gradient_boosting.py` contains the workflow used for training the xgboost model. The following plot illustrates the performance of the model as a function of the date to peak bloom.
+
+![Median Absolute Error as a Function of the Number of Days to Peak Bloom](/images/readme_img.png)
 
 ## Predictions 
 
