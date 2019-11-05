@@ -53,7 +53,7 @@ def get_all_windows(df, window_length, max_distance_to_peak, min_distance_to_pea
     #drop Is_Peak_Bloom
     #col_to_drop.append('Is_Peak_Bloom')
     if(len(col_to_drop)>0):
-        df_windows.drop(columns = col_to_drop,inplace = True)
+        df_windows.drop(columns = col_to_drop, inplace = True)
     
     df_windows = df_windows.dropna() #NaNs were generate as a result of the shifting
     
@@ -91,21 +91,24 @@ def normalize(x_train,x_test):
     xn_test = min_max_scaler.transform(x_test)
     return xn_train, xn_test
 
-def cross_validate_by_city(df,mdl,target_col,col_to_drop = [],k=3):
+def cross_validate_from_list(dfs, mdl, target_col, weighting = None, col_to_drop = [], k=5):
     """
-    Cross validation with separation of the cross-validation folds by city.
-    Separation by city ensures that any set of overlapping windows are either 
-    both in the training folds or both in the validation fold
+    Cross validation with separation of the cross-validation folds based on dfs.
+    dfs is a list of dataframes, and the samples from each dataframe is grouped 
+    together in the same fold. Used to ensure that all overlapping windows are 
+    either all in the training folds or all in the validation fold.
     
     Parameters
     ----------
-    df: dataframe containing the windowed features and corresponding target
+    dfs: list of dataframes containing the windowed features and corresponding target
     mdl: model for which cross-validation is performed. Assumed to have 'fit' 
         and 'predict', as in sklearn or xgboost
     target_col: name of column containing targets
+    weighting: function that takes in an array of target values and return a list
+        of weights corresponding to each sample
     col_to_drop: list of names of columns to drop from df. 
         Default is col_to_drop=[]
-    k: number of folds to use in cross validation. Default is k=3
+    k: number of folds to use in cross validation. Default is k=5
     
     Returns
     -------
@@ -113,7 +116,7 @@ def cross_validate_by_city(df,mdl,target_col,col_to_drop = [],k=3):
     """      
     
     #get number of cities in training data
-    nb_train_cities = len(df)
+    nb_groups = len(dfs)
     
     #use sklearn's module to facilitate cross validation
     cv = KFold(n_splits=k, shuffle=True)
@@ -123,15 +126,15 @@ def cross_validate_by_city(df,mdl,target_col,col_to_drop = [],k=3):
     
     #separate k_folds, with test and train indices. Train model for each and
     #return score for the left-out fold
-    for train_cities, test_cities in cv.split(np.arange(nb_train_cities)): 
+    for train_folds, test_folds in cv.split(np.arange(nb_groups)): 
         
         #create training and test sets for the cross validation
         train_cv_df = []
         test_cv_df = []
-        for index in train_cities:
-            train_cv_df.append(df[index])
-        for index in test_cities:
-            test_cv_df.append(df[index])
+        for index in train_folds:
+            train_cv_df.append(dfs[index])
+        for index in test_folds:
+            test_cv_df.append(dfs[index])
             
         #concatenate into a training set and test sets and shuffle for training
         train_cv_df = pd.concat(train_cv_df)
@@ -146,13 +149,18 @@ def cross_validate_by_city(df,mdl,target_col,col_to_drop = [],k=3):
         x_cv_test = test_cv_df.drop(columns = col_to_drop).values
         
         y_cv_train = train_cv_df.Time_To_Peak.values
-        x_cv_train = train_cv_df.drop(columns = ['Date','Time_To_Peak']).values
+        x_cv_train = train_cv_df.drop(columns = col_to_drop).values#['Date','Time_To_Peak']).values
         
         #normalize
         xn_cv_train, xn_cv_test = normalize(x_cv_train,x_cv_test)
         
-        #fit and get metrics on left-out fold
-        mdl.fit(xn_cv_train,y_cv_train)
+        if weighting is None:
+            #fit and get metrics on left-out fold
+            mdl.fit(xn_cv_train, y_cv_train)
+        else:
+            #compute weighting for the training set then fit and get metrics on left-out fold
+            weights = weighting(y_cv_train)
+            mdl.fit(xn_cv_train, y_cv_train, weights)
         y_pred = mdl.predict(xn_cv_test)
         maes.append(median_absolute_error(y_pred, y_cv_test))
 
@@ -287,8 +295,9 @@ def prepare_data_for_training(train_df, test_df, drop_Time_Since_Peak = False, d
     return_numpy: boolean, whether function should return x_train/test and 
         y_train/test as numpy arrays or pandas dataframes
     weight_delays: if using delays, set how much delay (time from peak) until
-        downweighting samples. Default is None - leaves all samples equally 
-        weighted
+        downweighting samples. If not None, adds column 'Weights' containing 
+        how much each sample should be weighted. Only applies if return_numpy
+        is False. Default is None
     
     Returns
     -------
@@ -394,7 +403,7 @@ def plot_predictions_versus_true(y_true,y_pred, days_plotted = 60, years_back = 
 
 def plot_mae_vs_y_true(y_pred,y_true,points_to_plot = None):
     """
-    Computes the mean absolute difference between y_pred and y_true as a vector, 
+    Computes the mean absolute error between y_pred and y_true as a vector, 
     where the index of med_error refers to the number of days til peak bloom.
     Also produces a plot, and if name isn't null, the plot is saved as an eps 
     file.
@@ -432,7 +441,7 @@ def plot_mae_vs_y_true(y_pred,y_true,points_to_plot = None):
 
 def plot_median_error_vs_y_true(y_pred,y_true,points_to_plot = None, name = None):
     """
-    Computes the median absolute difference between y_pred and y_true as a vector, 
+    Computes the median absolute error between y_pred and y_true as a vector, 
     where the index of med_error refers to the number of days til peak bloom
     if name isn't null, the plot is saved as an eps file
     
@@ -473,33 +482,63 @@ def plot_median_error_vs_y_true(y_pred,y_true,points_to_plot = None, name = None
         plt.savefig(name, format='eps', dpi=1000)
     return med_error
     
-def Cross_Validate(df, window_length, max_distance_to_peak):
-    #Do k-fold cross validation and show metrics - comment out when not doing hyperparameter tuning
+def grid_search_cross_validation_XGBR(dfs, depths, estimators, weighting = None, target_col='Time_To_Peak', col_to_drop = [], k = 5, verbose= False):
+    """
+    Cross validation of xgboostRegressor with separation of the cross-validation folds based on dfs.
+    dfs is a list of dataframes, and all samples of a dataframe in dfs are in the same CV fold.
+    This is used to get separation by city and year, since separation by city/year ensures that any 
+    set of overlapping windows are either both in the training folds or both in the validation fold. 
+    Grid search is performed over the values in depths and estimators.
+    
+    Parameters
+    ----------
+    dfs: list of dataframes containing the windowed features and corresponding
+        target. Each dataframe in the list is from a same unique year/city pair
+    depths: list of integers containing the depths to be used in cross validating 
+        xgboost regressor
+    estimators: list of integers containing the number of estimators to be used 
+        in cross validating xgboost regressor
+    weighting: function that takes in an array of target values and return a list
+        of weights corresponding to each sample. Default is None
+    target_col: name of column containing targets. Default is 'Time_To_Peak'
+    col_to_drop: list of names of columns to drop from df. 
+        Default is col_to_drop=[]
+    k: number of folds to use in cross validation. Default is k=5
+    verbose: boolean. If True, prints progress and performance. Default is False
+    
+    Returns
+    -------
+    maes: list containing the mean average error for each validation folds 
+    hyperparams: string describing the hyperparameters for each tested set of hyperparameter values
+    """     
+    
+    #store hyperparaters used to track performance
     max_depths = []
     avg_maes = []
     hyperparams = []    
 
-    for depth in range(5,9):
+    for depth in depths:
         
-        for n_estimators_index in range(2,6):
+        for n_estimators in estimators:
             
-            n_estimators = 50 * n_estimators_index
-            str_hyperparams = 'dist_to_peak: ' + str(max_distance_to_peak) + '\nwindow_length: ' + str(window_length) + '\nmax_depth: ' + str(depth) + '\nn_estimators: ' + str(n_estimators)
-            print(str_hyperparams)
+            str_hyperparams = 'max_depth: ' + str(depth) + '. n_estimators: ' + str(n_estimators)
+            if verbose: print(str_hyperparams) #to show progress
             
             #Define model
             xgbr = xgboost.XGBRegressor(max_depth=depth,
                                         n_estimators = n_estimators,
                                         objective = 'reg:squarederror')
             
-            #Return metrics related to cross validation by city
-            maes, r2s = cross_validate_by_city(df = df,
-                                               mdl = xgbr,
-                                               target_col='Time_To_Peak',
-                                               col_to_drop=['Date'])
-            
-            print('\nMAEs and R^2: max_depth = ' + str(depth))
-            print('Average MAE: ' + str(np.mean(maes)) + 'all: ' + str(maes))
+            #Perform cross validation for the defined model and get its performance metrics
+            maes = cross_validate_from_list(dfs = dfs, 
+                                            mdl = xgbr, 
+                                            target_col=target_col, 
+                                            weighting = weighting,
+                                            col_to_drop=col_to_drop,
+                                            k = k)
+            if verbose:
+                #print('\nMAEs and R^2: max_depth = ' + str(depth))
+                print(str_hyperparams + '. Average MAE: ' + str(np.mean(maes)) + '. All: ' + str(maes))
             
             max_depths.append(depth)
             avg_maes.append(np.mean(maes))
@@ -507,7 +546,7 @@ def Cross_Validate(df, window_length, max_distance_to_peak):
     
     #Plot evolution of test set error as a function of the model complexity
     plt.plot(max_depths,avg_maes)
-    plt.xlabel('Model complexity')
+    plt.xlabel('Model complexity') #actual model complexity only if depths or estimators is of length 1
     plt.ylabel(r'Test fold MAE')
     plt.show()
     

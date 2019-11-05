@@ -15,6 +15,7 @@ Cities = ['sapporo','niigata','aomori','kanazawa','hiroshima','sendai',
 nb_cities = len(Cities)
 
 #Assign cities to train and test cities
+
 window_length = 100
 max_distance_to_peak = 150
 
@@ -29,7 +30,7 @@ dfs_w = sutils.get_lists_of_windows(window_length,
 train_df, test_df  = sutils.get_train_test_split_by_date_and_city(dfs_w,test_size=0.2)
 
 #get data as a pandas dataframe for coxPHFitter
-weight_delays = 30
+weight_delays = 30 #number of samples before peak bloom for which sample is downweighted
 n_train, n_test = sutils.prepare_data_for_training(train_df,
                                                    test_df,
                                                    drop_Time_Since_Peak = True, 
@@ -49,6 +50,7 @@ cph.print_summary()
 #Quantify predictions
 y_test = n_test.Target.values
 y_pred = cph.predict_median(n_test).values.T[0]
+
 #get mean average error for last 100 days
 mae_test = sutils.plot_mae_vs_y_true(y_pred,y_test,100)
 
