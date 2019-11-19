@@ -5,13 +5,33 @@ import time
 import calendar
 from dateutil.relativedelta import relativedelta
 import pandas as pd
-#import cleaning as clean
+
+#Define city and latitude where predictions are to be made
+city = 'japan/nagasaki'
+df_latitudes = pd.read_csv('../data/raw/city_geo_data.csv')
+df_latitudes = df_latitudes.set_index('City')
+latitude = df_latitudes.loc[city.split('/')[-1], 'Latitude']
+
+city = 'canada/toronto'
+latitude = 74
 
 def scrape_weather(begin_date, end_date, Measurements, city):
     """
-    Gets the weather data, specifically the Measurements from the location city
-    for each day between begin_date and end_date. Returns a list of lists, where 
-    the weather for each day is encoded as a list.
+    Get weather data from a location over a range of dates
+    
+    Parameters
+    ----------
+    begin_date: beginning of date range, string of format "YYYY-MM-DD"
+    end_date: end of date range, string of format "YYYY-MM-DD"
+    Measurements: list of measurements to extract. Default is all available measurements,
+        i.e. Measurements = ['\"desc\"','\"temp\"','\"templow\"','\"baro\"','\"wind\"','\"wd\"','\"hum\"']
+    city: string, location of city, as required in the url of timeanddate (typically '<country>/<city>).
+        See www.timeanddate.com/weather/ for details
+        
+    Returns
+    -------
+    weather_data: list of lists containing the date and raw data for the given city over the given 
+        range of dates
     """
     current_date = datetime.strptime(begin_date, "%Y-%m-%d")
     end_date = datetime.strptime(end_date, "%Y-%m-%d")+relativedelta(months=+1)
@@ -123,10 +143,9 @@ def make_prediction_today(city, latitude):
         df_windows = pd.concat([df_windows,df_temp],axis=1)
     #include target and latitude on last frame
     df_windows = pd.concat([df_windows,df.shift(-100)],axis=1)
+    df_windows = df_windows.dropna() #Only keep latest window, all others have nans due to shifting
     
-    df_windows = df_windows.dropna() #Only keep latest window
-    
-    x = df_windows.values
+    x = df_windows.values #numpy x is required for predictions
     
     #load model and normalizing function
     loaded_model = joblib.load("model")
@@ -139,11 +158,8 @@ def make_prediction_today(city, latitude):
     
     return datetime.strftime(datetime.strptime(date_of_prediction,"%Y-%m-%d") + timedelta(int(predicted_days_to_bloom[0])),"%Y-%m-%d"), date_of_prediction
 
-city = 'japan/nagasaki'
-df_latitudes = pd.read_csv('../data/raw/city_geo_data.csv')
-df_latitudes = df_latitudes.set_index('City')
-latitude = df_latitudes.loc[city.split('/')[-1], 'Latitude']
-
+#make predictions
 prediction, date_of_prediction = make_prediction_today(city,latitude)
-#show prediction
+
+#Print prediction
 print('Prediction for ' + city.split('/')[-1] + ' made on ' + date_of_prediction + ' : ' + prediction)

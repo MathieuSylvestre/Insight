@@ -36,7 +36,7 @@ pip install -r requirements.txt
 
 ## Download Data
 
-To download the weather data, run 'notebook/weather_scraper.ipynb'. For predictions, download only the cities of interest, for the latest year. Different cities can also be included as long as historic weather for the past 100 days are available on [this site](https://www.timeanddate.com/weather/). Historical peak bloom dates and geographic information used for training can be found in the `tables` folder. New locations and the corresponding geographical information should be added to these files for predictions at new locations. The peak bloom dates do not need to be true, unless a new model is to be trained with these values. After making these adjustments, run `scripts/cleaning.py`. This will produce a cleaned dataset, saved as a `.csv` file.
+The raw and cleaned data used for training can be found in the `data` folder. To download the weather data from its source, run `notebook/weather_scraper.ipynb`. For predictions, download only the cities of interest, for the latest year. Different cities can also be included as long as historic weather for the past 100 days are available on [this site](https://www.timeanddate.com/weather/). Historical peak bloom dates and geographic information used for training can be found in the `tables` folder. New locations and the corresponding geographical information should be added to these files for predictions at new locations. After making these adjustments, run `scripts/cleaning.py`. This will produce a cleaned dataset, saved as a `.csv` file.
 
 ## Survival Analysis
 
@@ -50,7 +50,7 @@ Following cross-validation, a gradient-boosted tree was trained using the optima
 
 ## Predictions 
 
-New predictions can be made with `scripts/make_predictions.py`. Beforehand, data for the predictions must be obtained using  `notebook/weather_scraper.ipynb' and 'scripts/cleaning.py` - see [Download Data](#download-data) for details.
+New predictions can be made with `scripts/make_predictions.py`. The code can be easily modified to include cities not used for training, though the city's latitude must be provided. Alternative, for predictions over a range of dates, it may be preferable t data for the predictions must be obtained using  `notebook/weather_scraper.ipynb' and 'scripts/cleaning.py` - see [Download Data](#download-data) for details.
 
 ## Links
 
