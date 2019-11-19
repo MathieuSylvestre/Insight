@@ -2,7 +2,7 @@ import numpy as np
 import xgboost
 from sklearn.metrics import median_absolute_error
 import sakura_utils as sutils
-import pickle
+#import pickle
 
 #Define list of cities considered
 Cities = ['sapporo','niigata','aomori','kanazawa','hiroshima','sendai', 
@@ -34,7 +34,8 @@ xn_train, y_train, xn_test, y_test = sutils.prepare_data_for_training(train_df,
                                                    drop_Time_Since_Peak = True, 
                                                    drop_Day_Of_Year = False, 
                                                    drop_Latitude = False,
-                                                   return_numpy=True)
+                                                   return_numpy = True,
+                                                   save_transform = True)
 
 #Weigh samples. Smaller weights are assigned to samples far from the actual
 #bloom since we assume that required information to make a better prediction 
@@ -63,9 +64,9 @@ xgbr = xgboost.XGBRegressor(max_depth=7,
 
 xgbr.fit(xn_train,y_train,weighting_function(y_train))
 
-#Save model for future retrieval
-filename = 'model' + '.sav'
-pickle.dump(xgbr, open(filename, 'wb'))
+##Save model for future retrieval
+#filename = 'model' + '.sav'
+#pickle.dump(xgbr, open(filename, 'wb'))
 
 #make predicitions
 print('Test set predictions')

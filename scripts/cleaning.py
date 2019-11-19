@@ -22,7 +22,7 @@ for i in range(4):
 
 dfs = []
 
-#Create dictionary for precipitation and sun descriptions
+#Create dictionary for precipitation descriptions
 Prec_Descriptions = {
     'Drizzle.': 0.1,
     'Heavy rain.':1,
@@ -43,22 +43,6 @@ Prec_Descriptions = {
     'Thundershowers.': 0.3,
 }
 
-Sun_Descriptions = {
-#    'Low clouds.': 0,
-#    'Cloudy.':0
-    'Broken clouds.':0.3,
-    'Mostly cloudy.':0.15,
-    'Overcast.':0.05,
-    'Partly sunny.': 0.5,
-    'Partly cloudy.':0.5,
-    'Passing clouds.':0.7,
-    'Fog.': 0.2,
-    'Dense fog.':0.05,
-    'Clear.':0.95,
-    'More clouds than sun.':0.3,
-    'Scattered clouds.':0.7,
-}
-
 #load target dates
 df_target = pd.read_csv('../data/raw/peak_bloom_all.csv')
 
@@ -75,9 +59,11 @@ def aggregate_min(x1,x2,x3,x4):
 def aggregate_sum(x1,x2,x3,x4):
     return np.sum([x1,x2,x3,x4])
 
-#Returns the number of days since August 1 from a string in the form 'YYYY-MM-DD'
-#For days 
 def date_to_nth_day(date, str_format='%Y-%m-%d'):
+    """
+    Returns the number of days since August 1 from a string in the form 
+    'YYYY-MM-DD'
+    """
     date = datetime.strptime(date, str_format)
     new_year_day = datetime(year=date.year, month=1, day=1)
     nb_days = (date - new_year_day).days + 1
@@ -85,11 +71,12 @@ def date_to_nth_day(date, str_format='%Y-%m-%d'):
         return nb_days + - 211 #153 is offset for August 1
     return (date - new_year_day).days + 365 - 211#return actual day of year otherwise
 
-#Take in description and column containing description, return updated value for column 'col'. col should be a string
-#Modifies the column col of dataframe at the TODO
 def quantify_description(df, str_desc, col_desc, col, val_true):
-    #if description contains string in each of the following,
-    
+    """
+    Quantifies descriptors (i.e. precipitation). Takes in description and column 
+    containing description (col), returns updated value for col, i.e. modifies 
+    the column 'col' of dataframe df
+    """
     #Get boolean about whether the string is contained in column
     ind = df[col_desc].str.contains(str_desc,case=True, regex=False)
     #Get array of value to add to each row of col based on value contained
@@ -101,7 +88,6 @@ def quantify_description(df, str_desc, col_desc, col, val_true):
 #To record time
 start_time = time.time()
 
-#for MVP
 for city in Cities:
     df = pd.read_csv('../data/raw/weather_all/' + city + '.csv',header=None)
     
@@ -115,26 +101,17 @@ for city in Cities:
     for i in range(4):
         df['Desc' + str(i+1)].fillna('', inplace=True)
         df['Prec' + str(i+1)] = 0
-#        df['Sun'  + str(i+1)] = 0 #Probably not clear enough
 
         #Add quantitative description
         for description in Prec_Descriptions:     
             val = Prec_Descriptions[description]
             quantify_description(df, description, 'Desc' + str(i+1), 'Prec' + str(i+1), val) 
-        
-#        #Sun descriptions removed - probably not clear enough
-#        for description in Sun_Descriptions:    
-#            val = Sun_Descriptions[description]
-#            quantify_description(df, description, 'Desc' + str(i+1), 'Sun'  + str(i+1), val)              
-
-#    print(df[['Desc1','Prec1']])
-#    print(df[['Desc2','Prec2']])
     
     df.drop(columns = ['Desc1','Desc2','Desc3','Desc4'],inplace=True)   
     
     #interpolate missing information
     df.interpolate(limit = 30, inplace = True)
-    df.loc[pd.isna(df['Temp1']), :].index.tolist()
+    df.loc[pd.isna(df['Temp1']), :].index.tolist() #DON'THINK THIS DIES ANYTHING
         
     #Set targets and time since last peak as a feature
     targets = df_target[city].to_list()
@@ -144,9 +121,6 @@ for city in Cities:
     df['Time_Since_Peak']= np.nan
     df['Is_Peak_Bloom']= 0 
     df['Time_To_Peak']= np.nan
-
-#    print('Targets of ' + city + ' :')
-#    print(targets)
     
     for target in targets:
         

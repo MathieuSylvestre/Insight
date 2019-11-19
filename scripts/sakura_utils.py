@@ -6,6 +6,7 @@ from sklearn.metrics import median_absolute_error
 import matplotlib.pyplot as plt
 import statistics
 import xgboost
+import joblib
 
 def get_all_windows(df, window_length, max_distance_to_peak, min_distance_to_peak = 0, col_to_drop=[]):
     """
@@ -70,7 +71,7 @@ def get_all_windows(df, window_length, max_distance_to_peak, min_distance_to_pea
     df_windows.drop(i_to_drop , inplace=True)
     return df_windows
     
-def normalize(x_train,x_test):
+def normalize(x_train,x_test,save_transform = False):
     """
     Normalizes training and test samples using sklearns fit_transform 
     and transform functions from the MinMaxScalar
@@ -89,6 +90,8 @@ def normalize(x_train,x_test):
     min_max_scaler = preprocessing.MinMaxScaler()
     xn_train = min_max_scaler.fit_transform(x_train)
     xn_test = min_max_scaler.transform(x_test)
+    if save_transform:
+        joblib.dump(min_max_scaler, "min_max_scaler")
     return xn_train, xn_test
 
 def cross_validate_from_list(dfs, mdl, target_col, weighting = None, col_to_drop = [], k=5):
@@ -277,7 +280,7 @@ def get_sample_weights(days_before_offset,x,scale_factor=100):
 
 #main preprocessing tool once training and test set have defined
 #   Assumed that train_df and test_df are lists of dataframes
-def prepare_data_for_training(train_df, test_df, drop_Time_Since_Peak = False, drop_Day_Of_Year = True, drop_Latitude = False, return_numpy = True, weight_delays = None):
+def prepare_data_for_training(train_df, test_df, drop_Time_Since_Peak = False, drop_Day_Of_Year = True, drop_Latitude = False, return_numpy = True, weight_delays = None, save_transform=False):
     """
     From training and test sets stored as lists of dataframes, performs normalization
     and returns training and test sets ready for training
@@ -335,7 +338,7 @@ def prepare_data_for_training(train_df, test_df, drop_Time_Since_Peak = False, d
     x_test = test_all_df.drop(columns = col_to_drop).values
 
     #Normalize input data
-    xn_train, xn_test = normalize(x_train, x_test)
+    xn_train, xn_test = normalize(x_train, x_test,save_transform=True)
     
     if return_numpy:
         return xn_train, y_train, xn_test, y_test
