@@ -80,6 +80,7 @@ def normalize(x_train,x_test,save_transform = False):
     ----------
     x_train: training set to be normalized
     x_test: test set to be normalized
+    save_transform: if true, save the scaler object
         
     Returns
     -------
