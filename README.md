@@ -50,7 +50,7 @@ Following cross-validation, a gradient-boosted tree was trained using the optima
 
 ## Predictions 
 
-New predictions can be made with `scripts/make_predictions.py`. The code can be easily modified to include cities not used for training, though the city's latitude must be provided. Alternative, for predictions over a range of dates, it may be preferable t data for the predictions must be obtained using  `notebook/weather_scraper.ipynb' and 'scripts/cleaning.py` - see [Download Data](#download-data) for details.
+New predictions can be made with `scripts/make_predictions.py`. The code can be easily modified to include cities not used for training, though the city's latitude must be provided. For better results with a new city, it may be preferable to get more relevant data, especially if its climate/geography is sufficiently different from the cities used for training. See [Download Data](#download-data) for details.
 
 ## Links
 
