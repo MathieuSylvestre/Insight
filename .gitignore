@@ -1,4 +1,3 @@
-data/
 .DS_Store
 .ipynb_checkpoints/
 notebooks/.ipynb_checkpoints/nfl_weeks_retriever-checkpoint.ipynb
