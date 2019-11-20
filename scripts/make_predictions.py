@@ -113,7 +113,7 @@ def make_prediction_today(city, latitude):
     
     #Only keep temperature
     weather_needed = []
-    avg_temp = 15 #dummy
+    avg_temp = 15 #dummy value, only used if value is missing 
     for day in weather_data:
         date = day[0]
         #suppose same avg_temp as previous day if missing data

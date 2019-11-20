@@ -2,7 +2,7 @@ import numpy as np
 import xgboost
 from sklearn.metrics import median_absolute_error
 import sakura_utils as sutils
-#import pickle
+import joblib
 
 #Define list of cities considered
 Cities = ['sapporo','niigata','aomori','kanazawa','hiroshima','sendai', 
@@ -65,8 +65,7 @@ xgbr = xgboost.XGBRegressor(max_depth=7,
 xgbr.fit(xn_train,y_train,weighting_function(y_train))
 
 ##Save model for future retrieval
-#filename = 'model' + '.sav'
-#pickle.dump(xgbr, open(filename, 'wb'))
+joblib.dump(xgbr, "model2")
 
 #make predicitions
 print('Test set predictions')
@@ -75,15 +74,15 @@ print('MAE : ' + str(median_absolute_error(y_test,y_pred)))
 
 #Plot predictions over time for the last year of a city from the test set
 points_to_plot = 50#+2*152
-dist_from_end = 0#+2*152
-if dist_from_end < 1:
-    sutils.plot_predictions_over_time(y_test[-points_to_plot:],
-                                      y_pred[-points_to_plot:])
-else:
-    sutils.plot_predictions_over_time(y_test[-points_to_plot:-dist_from_end],
-                                      y_pred[-points_to_plot:-dist_from_end])
+#dist_from_end = 0#+2*152
+#if dist_from_end < 1:
+sutils.plot_predictions_over_time(y_test[-points_to_plot:],
+                                  y_pred[-points_to_plot:])
+#else:
+#    sutils.plot_predictions_over_time(y_test[-points_to_plot:-dist_from_end],
+#                                      y_pred[-points_to_plot:-dist_from_end])
 
-#Plot true vs predicted for some year
+#Plot true vs predicted for some year/city
 sutils.plot_predictions_versus_true(y_test,y_pred,100,1)
 
 #show training set predictions
