@@ -11,11 +11,7 @@ Cities = ['sapporo','niigata','aomori','kanazawa','hiroshima','sendai',
           'kyoto', 'tokyo', 'fukuoka', 'shizuoka','matsuyama','osaka','nagoya',
           'nagasaki','kagoshima','naha','washington']
 
-#Do k-fold cross validation for model selection
-nb_cities = len(Cities)
-
-#Assign cities to train and test cities
-
+#Define parameters relating to scope of problem
 window_length = 100
 max_distance_to_peak = 150
 
@@ -54,11 +50,11 @@ y_pred = cph.predict_median(n_test).values.T[0]
 #get mean average error for last 100 days
 mae_test = sutils.plot_mae_vs_y_true(y_pred,y_test,100)
 
-#Plot results for presentation slides
+#Plot results for presentation slides if necessary
 if plot_result:
     
     #Define times at which to plot CDF
-    times = np.arange(140).tolist()
+    times = np.arange(100).tolist()
     
     #Plot lines delimiting an interval in time and corresponding values of the CDF
     low_x = 60
