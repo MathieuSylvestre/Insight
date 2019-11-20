@@ -20,8 +20,6 @@ for i in range(4):
         feat = feature + str(i+1)
         column_names.append(feat)
 
-dfs = []
-
 #Create dictionary for precipitation descriptions
 Prec_Descriptions = {
     'Drizzle.': 0.1,
@@ -47,7 +45,6 @@ Prec_Descriptions = {
 df_target = pd.read_csv('../data/raw/peak_bloom_all.csv')
 
 aggregate_into_days = True
-window_length = None
 
 #To aggregate daily data (there are 4 data points of each type (temp, humidity, etc. each day)
 def aggregate_mean(x1,x2,x3,x4):
@@ -111,7 +108,6 @@ for city in Cities:
     
     #interpolate missing information
     df.interpolate(limit = 30, inplace = True)
-    df.loc[pd.isna(df['Temp1']), :].index.tolist() #DON'THINK THIS DIES ANYTHING
         
     #Set targets and time since last peak as a feature
     targets = df_target[city].to_list()
@@ -143,7 +139,7 @@ for city in Cities:
             df['Time_To_Peak'].iloc[peak_indices[0]+1] = peak_indices[1]-peak_indices[0]-1
             df['Time_Since_Peak'].iloc[peak_indices[-1]-1] = peak_indices[-1]-peak_indices[-2]-1
         
-        df['Time_To_Peak'].iloc[0] = peak_indices[0]
+        df['Time_To_Peak'].iloc[0] = peak_indices[0] 
         df['Time_Since_Peak'].iloc[-1] = len(df)-peak_indices[-1]-1
         
         #Set dummy values to rows that will be deleted after further preprocessing
@@ -151,7 +147,7 @@ for city in Cities:
         df['Time_Since_Peak'].iloc[0] = -1000
         
         df['Time_To_Peak'] = df['Time_To_Peak'].interpolate() #Set targest for regression
-        df['Time_Since_Peak'] = df['Time_Since_Peak'].interpolate() #Set missing data
+        df['Time_Since_Peak'] = df['Time_Since_Peak'].interpolate() #Insert values for all dates
         
     #Remove initial Nans
     if len(df.loc[pd.isna(df['Temp1']), :].index.tolist()) > 0:
@@ -190,5 +186,4 @@ for city in Cities:
     #save to CSV as cleaned data
     df.to_csv(r'../data/cleaned/' + city + '_daily.csv',index=False)
 
-    dfs.append(df)
 

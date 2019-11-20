@@ -12,9 +12,6 @@ df_latitudes = pd.read_csv('../data/raw/city_geo_data.csv')
 df_latitudes = df_latitudes.set_index('City')
 latitude = df_latitudes.loc[city.split('/')[-1], 'Latitude']
 
-city = 'canada/toronto'
-latitude = 74
-
 def scrape_weather(begin_date, end_date, Measurements, city):
     """
     Get weather data from a location over a range of dates
@@ -116,6 +113,7 @@ def make_prediction_today(city, latitude):
     
     #Only keep temperature
     weather_needed = []
+    avg_temp = 15 #dummy
     for day in weather_data:
         date = day[0]
         #suppose same avg_temp as previous day if missing data
