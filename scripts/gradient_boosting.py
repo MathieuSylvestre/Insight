@@ -2,7 +2,7 @@ import numpy as np
 import xgboost
 from sklearn.metrics import median_absolute_error
 import sakura_utils as sutils
-import joblib
+#import joblib
 
 #Define list of cities considered
 Cities = ['sapporo','niigata','aomori','kanazawa','hiroshima','sendai', 
@@ -64,8 +64,8 @@ xgbr = xgboost.XGBRegressor(max_depth=7,
 
 xgbr.fit(xn_train,y_train,weighting_function(y_train))
 
-##Save model for future retrieval
-joblib.dump(xgbr, "model2")
+#Save model for future retrieval
+#joblib.dump(xgbr, "model")
 
 #make predicitions
 print('Test set predictions')
